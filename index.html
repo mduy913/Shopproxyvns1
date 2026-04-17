@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>DELTA SHOP V100</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --bg: #0b0b12; --cyan: #00f2ff; --gold: #ffcc00; --card: #1a1a2e; --red: #ff4444; --vip: #ff00ff; --green: #00ff88; }
+        body { background: var(--bg); color: white; font-family: sans-serif; padding: 10px; margin: 0; }
+        .box { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #2a2a40; margin-bottom: 15px; position: relative; }
+        input, textarea { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #333; background: #000; color: #fff; box-sizing: border-box; outline: none; font-size: 13px; }
+        button { border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.2s; text-transform: uppercase; font-size: 12px; }
+        button:active { transform: scale(0.95); }
+        .btn-main { background: var(--cyan); color: #000; }
+        .btn-gold { background: var(--gold); color: #000; }
+        .btn-green { background: var(--green); color: #000; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .adm-sec { border: 2px solid var(--red); padding: 10px; border-radius: 12px; margin-bottom: 15px; display: none; }
+        #qr-display { text-align: center; margin-top: 15px; display: none; background: #fff; padding: 15px; border-radius: 15px; border: 3px solid var(--cyan); }
+        #qr-display img { width: 220px; height: 220px; margin-bottom: 10px; }
+        #qr-display p { color: #000; margin: 2px 0; font-size: 13px; }
+        table { width:100%; font-size:11px; border-collapse: collapse; margin-top: 5px; }
+        td, th { padding: 8px 4px; border-bottom: 1px solid #222; text-align: left; }
+        .status-tag { position: absolute; top: 10px; right: 10px; font-size: 10px; padding: 4px 8px; border-radius: 20px; }
+        .price-tag { display: block; font-size: 10px; opacity: 0.8; margin-top: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-ui" style="max-width:400px; margin:50px auto; padding:10px;">
+        <div class="box">
+            <h3 style="text-align:center; color:var(--cyan); margin:0 0 15px 0">DELTA SYSTEM V100</h3>
+            <input type="text" id="au" placeholder="Tài khoản">
+            <input type="password" id="ap" placeholder="Mật khẩu">
+            <div class="grid">
+                <button class="btn-main" onclick="auth('login')">ĐĂNG NHẬP</button>
+                <button style="background:#444; color:#fff" onclick="auth('reg')">ĐĂNG KÝ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="shop-ui" style="display:none; max-width: 500px; margin: auto; padding: 10px;">
+        
+        <div id="adm-box" class="adm-sec">
+            <h4 style="color:var(--red); text-align:center; margin:0 0 10px 0">QUẢN TRỊ VIÊN</h4>
+            <div class="grid" style="margin-bottom:10px">
+                <button style="background:var(--green); color:#000" onclick="setSv(true)">MỞ SERVER</button>
+                <button style="background:var(--red); color:#fff" onclick="setSv(false)">ĐÓNG SERVER</button>
+            </div>
+            <p style="font-size:11px; margin:5px 0">Giá Lẻ (Ngày/Tuần/Tháng/Năm):</p>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+                <input type="number" id="adm-p-ngay" placeholder="Giá N">
+                <input type="number" id="adm-p-tuan" placeholder="Giá T">
+                <input type="number" id="adm-p-thang" placeholder="Giá Th">
+                <input type="number" id="adm-p-nam" placeholder="Giá Nam">
+            </div>
+            <p style="font-size:11px; margin:5px 0">Giá Gói x10 (10N / 10T / 10Th):</p>
+            <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+                <input type="number" id="adm-p-x10n" placeholder="Giá 10N">
+                <input type="number" id="adm-p-x10t" placeholder="Giá 10T">
+                <input type="number" id="adm-p-x10th" placeholder="Giá 10Th">
+            </div>
+            <button class="btn-main" onclick="saveSettings()">LƯU TẤT CẢ GIÁ</button>
+            <textarea id="add-k" placeholder="Dán key lẻ vào đây..." style="margin-top:10px; height:50px"></textarea>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+                <button class="btn-main" onclick="upK('ngay')">+N</button>
+                <button class="btn-main" onclick="upK('tuan')">+T</button>
+                <button class="btn-main" onclick="upK('thang')">+Th</button>
+                <button class="btn-main" onclick="upK('nam')">+Nam</button>
+            </div>
+            <h5 style="margin:10px 0 5px 0">YÊU CẦU NẠP:</h5>
+            <div id="adm-pay-list"></div>
+        </div>
+
+        <div class="box">
+            <div id="sv-status" class="status-tag"></div>
+            <p>Sếp: <b id="u-id" style="color:var(--cyan)"></b> | Ví: <b id="u-bl" style="color:var(--gold)">0</b>đ</p>
+            <input type="number" id="n-amt" placeholder="Nhập số tiền muốn nạp...">
+            <button class="btn-gold" onclick="nap()">NẠP TIỀN AUTO</button>
+            <div id="qr-display">
+                <img id="qr-img" src="">
+                <p>MB BANK: 0588807300000 | <b>CAO MINH DUY</b></p>
+                <p style="color:blue !important; font-weight:bold; font-size:16px">ND: <span id="txt-nd"></span></p>
+                <div class="grid" style="margin-top:10px">
+                    <button class="btn-main" onclick="confirmNap()">XÁC NHẬN ĐÃ CHUYỂN</button>
+                    <button style="background:#444; color:#fff" onclick="document.getElementById('qr-display').style.display='none'">HỦY</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h4 style="color:var(--cyan); margin:0 0 10px 0; text-align:center;">🛒 MUA LẺ KEY</h4>
+            <div class="grid">
+                <button class="btn-main" onclick="buy('ngay', 1)">NGÀY (<span id="s-ngay">0</span>) <span class="price-tag" id="pr-ngay">0đ</span></button>
+                <button class="btn-main" onclick="buy('tuan', 1)">TUẦN (<span id="s-tuan">0</span>) <span class="price-tag" id="pr-tuan">0đ</span></button>
+                <button class="btn-main" onclick="buy('thang', 1)">THÁNG (<span id="s-thang">0</span>) <span class="price-tag" id="pr-thang">0đ</span></button>
+                <button class="btn-main" onclick="buy('nam', 1)">NĂM (<span id="s-nam">0</span>) <span class="price-tag" id="pr-nam">0đ</span></button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h4 style="color:var(--green); margin:0 0 10px 0; text-align:center;">📦 GÓI SỈ X10 KEY</h4>
+            <div class="grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                <button class="btn-green" onclick="buy('ngay', 10)">10 NGÀY <span class="price-tag" id="pr-x10n">0đ</span></button>
+                <button class="btn-green" onclick="buy('tuan', 10)">10 TUẦN <span class="price-tag" id="pr-x10t">0đ</span></button>
+                <button class="btn-green" onclick="buy('thang', 10)">10 THÁNG <span class="price-tag" id="pr-x10th">0đ</span></button>
+            </div>
+            <p style="font-size:10px; color:#aaa; margin-top:10px; text-align:center;">* Gói x10 sẽ lấy trực tiếp từ kho key lẻ</p>
+        </div>
+
+        <div class="box">
+            <h4 style="margin:0 0 5px 0">📜 LỊCH SỬ MUA</h4>
+            <table><tbody id="h-list"></tbody></table>
+        </div>
+    </div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://shopmduy-default-rtdb.asia-southeast1.firebasedatabase.app" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let curU, curUID, settings = {}, svOpen = true;
+
+    function auth(type) {
+        const u = document.getElementById('au').value.trim().toLowerCase(), p = document.getElementById('ap').value;
+        if(!u || !p) return alert("Vui lòng điền đủ!");
+        if(type === 'reg') {
+            db.ref('users/'+u).set({password:p, balance:0, role:'user', uid:"U"+Date.now()}).then(()=>alert("Đăng ký thành công!"));
+        } else {
+            db.ref('users/'+u).once('value', s => {
+                const d = s.val();
+                if(d && d.password === p) {
+                    curU = u; curUID = d.uid;
+                    document.getElementById('auth-ui').style.display = 'none';
+                    document.getElementById('shop-ui').style.display = 'block';
+                    document.getElementById('u-id').innerText = u;
+                    if(d.role === 'admin') document.getElementById('adm-box').style.display = 'block';
+                    db.ref('users/'+u+'/balance').on('value', b => document.getElementById('u-bl').innerText = (b.val()||0).toLocaleString());
+                    init();
+                } else alert("Tài khoản hoặc mật khẩu sai!");
+            });
+        }
+    }
+
+    function setSv(st) { db.ref('system/status').set(st); }
+
+    function saveSettings() {
+        const d = {
+            p_ngay: Number(document.getElementById('adm-p-ngay').value),
+            p_tuan: Number(document.getElementById('adm-p-tuan').value),
+            p_thang: Number(document.getElementById('adm-p-thang').value),
+            p_nam: Number(document.getElementById('adm-p-nam').value),
+            p_x10n: Number(document.getElementById('adm-p-x10n').value),
+            p_x10t: Number(document.getElementById('adm-p-x10t').value),
+            p_x10th: Number(document.getElementById('adm-p-x10th').value)
+        };
+        db.ref('system/settings').set(d).then(() => alert("Đã lưu giá mới!"));
+    }
+
+    function buy(type, qty) {
+        if(!svOpen && curU !== 'admin') return alert("Shop đang bảo trì, quay lại sau sếp nhé!");
+        
+        let priceKey = qty === 10 ? 'p_x10' + (type === 'ngay' ? 'n' : type === 'tuan' ? 't' : 'th') : 'p_' + type;
+        const totalCost = settings[priceKey] || 0;
+
+        db.ref('users/'+curU+'/balance').once('value', s => {
+            let bal = s.val() || 0;
+            if(bal < totalCost) return alert("Ví không đủ tiền!");
+
+            db.ref('key_store/'+type).limitToFirst(qty).once('value', snap => {
+                if(!snap.exists() || snap.numChildren() < qty) return alert("Kho không đủ " + qty + " key!");
+
+                if(confirm("Xác nhận mua " + qty + " key với giá " + totalCost.toLocaleString() + "đ?")) {
+                    db.ref('users/'+curU+'/balance').set(bal - totalCost);
+                    let keys = snap.val(), resultKeys = [];
+                    for(let id in keys) {
+                        resultKeys.push(keys[id]);
+                        db.ref('key_store/'+type+'/'+id).remove();
+                    }
+                    db.ref('history_pay/'+curUID).push({
+                        time: new Date().toLocaleString(), 
+                        amount: (qty > 1 ? "GÓI 10 " : "LẺ ") + type.toUpperCase(), 
+                        status: resultKeys.join(' | ')
+                    });
+                    alert("MUA THÀNH CÔNG!\nKey: " + resultKeys.join('\n'));
+                }
+            });
+        });
+    }
+
+    function nap() {
+        const amt = Number(document.getElementById('n-amt').value);
+        if(amt < 1000) return alert("Tối thiểu 1k sếp ơi!");
+        const nd = `NAP ${curU.toUpperCase()}`;
+        document.getElementById('qr-img').src = `https://img.vietqr.io/image/mbbank-0588807300000-compact2.png?amount=${amt}&addInfo=${nd}`;
+        document.getElementById('txt-nd').innerText = nd;
+        document.getElementById('qr-display').style.display = 'block';
+        db.ref('bank_requests').push({user:curU, amount:amt, time:new Date().toLocaleString()});
+    }
+
+    function confirmNap() { alert("Đã gửi yêu cầu, sếp đợi admin duyệt nhé!"); document.getElementById('qr-display').style.display = 'none'; }
+
+    function upK(t) {
+        const nK = document.getElementById('add-k').value.trim().split('\n').filter(k=>k.trim()!=="");
+        nK.forEach(k => db.ref('key_store/'+t).push(k.trim()));
+        document.getElementById('add-k').value=""; alert("Đã nhập kho xong!");
+    }
+
+    function init() {
+        // Lấy trạng thái server
+        db.ref('system/status').on('value', s => {
+            svOpen = s.val() !== false;
+            const tag = document.getElementById('sv-status');
+            tag.innerText = svOpen ? "ĐANG MỞ" : "ĐANG ĐÓNG";
+            tag.style.background = svOpen ? "var(--green)" : "var(--red)";
+            tag.style.color = svOpen ? "#000" : "#fff";
+        });
+
+        // Lấy giá và cài đặt
+        db.ref('system/settings').on('value', s => {
+            if(s.exists()) {
+                settings = s.val();
+                ['ngay','tuan','thang','nam'].forEach(t => document.getElementById('pr-'+t).innerText = (settings['p_'+t]||0).toLocaleString()+"đ");
+                document.getElementById('pr-x10n').innerText = (settings.p_x10n||0).toLocaleString()+"đ";
+                document.getElementById('pr-x10t').innerText = (settings.p_x10t||0).toLocaleString()+"đ";
+                document.getElementById('pr-x10th').innerText = (settings.p_x10th||0).toLocaleString()+"đ";
+                
+                // Điền giá vào ô Admin
+                if(document.getElementById('adm-p-ngay')) {
+                    document.getElementById('adm-p-ngay').value = settings.p_ngay || 0;
+                    document.getElementById('adm-p-tuan').value = settings.p_tuan || 0;
+                    document.getElementById('adm-p-thang').value = settings.p_thang || 0;
+                    document.getElementById('adm-p-nam').value = settings.p_nam || 0;
+                    document.getElementById('adm-p-x10n').value = settings.p_x10n || 0;
+                    document.getElementById('adm-p-x10t').value = settings.p_x10t || 0;
+                    document.getElementById('adm-p-x10th').value = settings.p_x10th || 0;
+                }
+            }
+        });
+
+        // Cập nhật số lượng kho
+        ['ngay','tuan','thang','nam'].forEach(t => db.ref('key_store/'+t).on('value', s => document.getElementById('s-'+t).innerText = s.numChildren()));
+
+        // Lịch sử cá nhân
+        db.ref('history_pay/'+curUID).on('value', h => {
+            const t = document.getElementById('h-list'); t.innerHTML = "";
+            h.forEach(c => { const i = c.val(); t.innerHTML = `<tr><td>${i.time}</td><td>${i.amount}</td><td style="color:var(--cyan); word-break:break-all">${i.status}</td></tr>` + t.innerHTML; });
+        });
+
+        // Duyệt nạp (Admin)
+        db.ref('bank_requests').on('value', s => {
+            const l = document.getElementById('adm-pay-list'); l.innerHTML = "";
+            s.forEach(c => { const r = c.val(); l.innerHTML += `<div style="font-size:11px; margin-bottom:5px; border-bottom:1px solid #333; padding-bottom:5px">${r.user}: ${r.amount.toLocaleString()}đ <br><button style="background:var(--cyan); width:auto; padding:2px 10px" onclick="db.ref('users/${r.user}/balance').transaction(v=>(v||0)+${r.amount}); db.ref('bank_requests/${c.key}').remove()">DUYỆT</button> <button style="background:var(--red); width:auto; color:#fff; padding:2px 10px" onclick="db.ref('bank_requests/${c.key}').remove()">XÓA</button></div>`; });
+        });
+    }
+</script>
+</body>
+</html>
